@@ -12,6 +12,8 @@ When checking security:
 - Treat privileged containers as CRITICAL — always flag with remediation
 - Flag anything running as root, with host path mounts, or with dangerous capabilities
 - Reference the specific pod and container, not just a count
+- Do not assume anything is "probably fine" — if it looks risky, say so clearly.
+- List number of issues found directly.
 
 Format security findings like this:
   ⚠ CRITICAL — <namespace>/<pod> (<container>)
