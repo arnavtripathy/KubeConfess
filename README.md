@@ -20,20 +20,8 @@ KubeConfess is a CLI AI agent that lets you interrogate your Kubernetes cluster 
 
 Built for security engineers and platform engineers who want faster cluster visibility. Under the hood it uses any OpenAI-compatible API — Claude, GPT-4, Gemini, local models via Ollama, or anything else that speaks the OpenAI chat completions format. Swap the base URL and model name in one config file.
 
-```
-you> are there any privileged containers running?
+<img width="2458" height="1179" alt="kubeconfess" src="https://github.com/user-attachments/assets/7b1995ed-cf6d-47fd-8995-8474c1fddaa8" />
 
-  ⚙  check_privileged_pods(namespace=all)
-
-╭──────────────────────────────────────────────────────╮
-│ ⚠ Found 1 privileged container in kube-system:       │
-│                                                       │
-│ ⚠ CRITICAL — kube-system/debug-pod (debug-container) │
-│    What: running in privileged mode                   │
-│    Risk: full host access, container escape possible  │
-│    Fix:  set securityContext.privileged: false        │
-╰──────────────────────────────────────────────────────╯
-```
 
 ---
 
