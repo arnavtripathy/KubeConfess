@@ -1,11 +1,11 @@
 import json
 from openai import OpenAI
-from config.vars import API_KEY
+from config.vars import API_KEY, MODEL_NAME, BASE_URL, MAX_TOKENS
 from kube_functions.prompts import SYSTEM_PROMPT
 import kube_functions.list as list_tools
 import kube_functions.security as security_tools
 
-client = OpenAI(api_key=API_KEY, base_url="https://api.anthropic.com/v1")
+client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
 definitions = [
     *list_tools.definitions,
@@ -22,8 +22,8 @@ def dispatch(name, args, k8s, k8s_apps, k8s_auth):
 def send(messages, k8s, k8s_apps, k8s_auth, on_tool_call=None):
     while True:
         response = client.chat.completions.create(
-            model="claude-haiku-4-5",
-            max_tokens=1024,
+            model=MODEL_NAME,
+            max_tokens=MAX_TOKENS,
             tools=definitions,
             messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
         )
