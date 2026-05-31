@@ -19,7 +19,7 @@ def dispatch(name, args, k8s, k8s_apps):
         f"Unknown tool: {name}"
     )
 
-def send(messages, k8s, k8s_apps):
+def send(messages, k8s, k8s_apps, on_tool_call=None):
     while True:
         response = client.chat.completions.create(
             model="claude-haiku-4-5",
@@ -34,7 +34,8 @@ def send(messages, k8s, k8s_apps):
             messages.append(msg)
             for tool_call in msg.tool_calls:
                 args = json.loads(tool_call.function.arguments)
-                print(f"  \033[90m[tool] {tool_call.function.name}({args})\033[0m")
+                if on_tool_call:
+                    on_tool_call(tool_call.function.name, args)  # ← callback instead of print
                 result = dispatch(tool_call.function.name, args, k8s, k8s_apps)
                 messages.append({
                     "role": "tool",
