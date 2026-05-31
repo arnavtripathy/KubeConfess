@@ -12,14 +12,14 @@ definitions = [
     *security_tools.definitions,
 ]
 
-def dispatch(name, args, k8s, k8s_apps):
+def dispatch(name, args, k8s, k8s_apps, k8s_auth):
     return (
-        list_tools.dispatch(name, args, k8s=k8s, k8s_apps=k8s_apps) or
+        list_tools.dispatch(name, args, k8s=k8s, k8s_apps=k8s_apps, k8s_auth=k8s_auth) or
         security_tools.dispatch(name, args, k8s=k8s, k8s_apps=k8s_apps) or
         f"Unknown tool: {name}"
     )
 
-def send(messages, k8s, k8s_apps, on_tool_call=None):
+def send(messages, k8s, k8s_apps, k8s_auth, on_tool_call=None):
     while True:
         response = client.chat.completions.create(
             model="claude-haiku-4-5",
@@ -35,8 +35,8 @@ def send(messages, k8s, k8s_apps, on_tool_call=None):
             for tool_call in msg.tool_calls:
                 args = json.loads(tool_call.function.arguments)
                 if on_tool_call:
-                    on_tool_call(tool_call.function.name, args)  # ← callback instead of print
-                result = dispatch(tool_call.function.name, args, k8s, k8s_apps)
+                    on_tool_call(tool_call.function.name, args) 
+                result = dispatch(tool_call.function.name, args, k8s, k8s_apps, k8s_auth)
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tool_call.id,
