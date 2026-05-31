@@ -24,7 +24,7 @@ def dispatch(name, args, k8s, k8s_apps):
 def send(messages, k8s, k8s_apps):
     while True:
         response = client.chat.completions.create(
-            model="claude-sonnet-4-6",
+            model="claude-haiku-4-5",
             max_tokens=1024,
             tools=definitions,
             messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
