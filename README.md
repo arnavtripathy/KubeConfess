@@ -3,7 +3,7 @@
 <img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/f48c72fc-67d8-4161-a83e-14697f3f7f74" />
 
 
-**A conversational AI agent for Kubernetes — inspect and audit your cluster in plain English.**
+**Make your cluster confess its vulnerabilities raher than running multiple tools. A conversational AI agent for Kubernetes — inspect and audit your cluster in plain English.**
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue?style=flat-square&logo=python)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
