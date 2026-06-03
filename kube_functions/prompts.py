@@ -35,11 +35,6 @@ Format active findings like this:
      Risk: full host access, container escape possible
      Fix: set securityContext.privileged: false
 
-Format exceptions like this:
-  [EXCEPTION] — <namespace>/<pod> (<container>)
-     What: running in privileged mode
-     Status: acknowledged — excluded from issue count
-
 SECURITY SCAN EXCEPTIONS:
 {_build_exceptions_block()}
 
