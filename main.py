@@ -63,14 +63,14 @@ def get_input() -> str:
 
 
 # Wrap send() to show a spinner while waiting
-def send_with_spinner(messages, k8s, k8s_apps, k8s_auth):
+def send_with_spinner(messages, k8s, k8s_apps, k8s_auth, k8s_rbac):
     with Live(Spinner("dots", text="[dim]thinking...[/dim]"), console=console, transient=True) as live:
         def on_tool(name, args):
             live.stop()
             print_tool_call(name, args)
             live.start()
 
-        return send(messages, k8s, k8s_apps, k8s_auth, on_tool_call=on_tool)
+        return send(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, on_tool_call=on_tool)
 
 
 def main():
@@ -81,7 +81,7 @@ def main():
     print_banner()
 
     try:
-        k8s, k8s_apps, k8s_auth = connect(args.kubeconfig)
+        k8s, k8s_apps, k8s_auth, k8s_rbac = connect(args.kubeconfig)
         print_connection(args.kubeconfig)
     except Exception as e:
         console.print(f"  [bold red]✗[/bold red] Failed to connect: {e}")  
@@ -100,7 +100,7 @@ def main():
                 break
 
             messages.append({"role": "user", "content": user_input})
-            reply = send_with_spinner(messages, k8s, k8s_apps, k8s_auth)
+            reply = send_with_spinner(messages, k8s, k8s_apps, k8s_auth, k8s_rbac)
             print_reply(reply)
 
         except KeyboardInterrupt:

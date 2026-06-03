@@ -6,4 +6,5 @@ def connect(kubeconfig_path: str):
         client.CoreV1Api(),
         client.AppsV1Api(),
         client.AuthorizationV1Api(),
+        client.RbacAuthorizationV1Api(),
     )
