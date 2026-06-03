@@ -250,6 +250,8 @@ There are three clients available via `dispatch()`:
 
 If you need a client that isn't here yet (e.g. `NetworkingV1Api` for NetworkPolicies), add it to `kube_functions/connector.py`, return it from `connect()`, unpack it in `main.py`, and thread it through `agent.py`'s `dispatch()`.
 
+Also hey , here's the documentation reference: [https://github.com/kubernetes-client/python/blob/master/kubernetes/README.md](https://github.com/kubernetes-client/python/blob/master/kubernetes/README.md#documentation-for-api-endpoints)
+
 ### What makes a good contribution
 
 A good tool is one that would actually save time during a real audit or investigation. Think about the questions you find yourself asking repeatedly — "which pods are running as root?", "what services are exposed externally?", "which namespaces have no network policies?" — and turn those into tools.
