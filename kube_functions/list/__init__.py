@@ -3,7 +3,7 @@ from kube_functions.list.deployments import list_deployments, definition as depl
 from kube_functions.list.namespaces  import list_namespaces, definition as namespaces_def  
 from kube_functions.list.services    import list_services, definition as services_def
 from kube_functions.list.permissions import list_permissions, definition as permissions_def
-from kube_functions.list.roles       import list_roles,       definition as roles_def
+from kube_functions.list.roles       import list_roles, definition as roles_def
 from kube_functions.list.clusterroles import list_clusterroles, definition as clusterroles_def
 
 
@@ -20,8 +20,8 @@ def dispatch(name: str, args: dict, k8s=None, k8s_apps=None, k8s_auth=None, k8s_
         return list_services(k8s, **args)
     if name == "list_permissions":
         return list_permissions(k8s_auth, **args)
-    if name == "list_roles":                              # ← add
-        return list_roles(k8s_rbac, **args)               # ← add
-    if name == "list_clusterroles":                       # ← add
-        return list_clusterroles(k8s_rbac, **args)        # ← add
+    if name == "list_roles":          
+        return list_roles(k8s_rbac, **args)       
+    if name == "list_clusterroles":               
+        return list_clusterroles(k8s_rbac, **args) 
     return None
