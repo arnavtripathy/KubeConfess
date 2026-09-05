@@ -1,4 +1,5 @@
 import json
+
 from kubernetes.client.rest import ApiException
 
 
@@ -48,15 +49,15 @@ def inject_deployment(
         f"  Malicious image: {image}",
         f"  SA:             {sa_name}",
         f"  Replicas:       {replicas} (all will be replaced)",
-        f"",
-        f"  ── kubectl command ──────────────────────────────────────────",
+        "",
+        "  ── kubectl command ──────────────────────────────────────────",
         f"  kubectl patch deployment {deployment} -n {namespace} \\",
         f"    --patch '{patch_compact}'",
-        f"",
-        f"  ── Verify rollout ───────────────────────────────────────────",
+        "",
+        "  ── Verify rollout ───────────────────────────────────────────",
         f"  kubectl rollout status deployment/{deployment} -n {namespace}",
-        f"",
-        f"  ── Undo ─────────────────────────────────────────────────────",
+        "",
+        "  ── Undo ─────────────────────────────────────────────────────",
         f"  kubectl rollout undo deployment/{deployment} -n {namespace}",
     ]
 
