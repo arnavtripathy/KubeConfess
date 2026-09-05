@@ -20,7 +20,7 @@ definitions = [
 def dispatch(name, args, k8s, k8s_apps, k8s_auth, k8s_rbac):
     return (
         list_tools.dispatch(name, args, k8s=k8s, k8s_apps=k8s_apps, k8s_auth=k8s_auth, k8s_rbac=k8s_rbac)
-        or security_tools.dispatch(name, args, k8s=k8s, k8s_apps=k8s_apps)
+        or security_tools.dispatch(name, args, k8s=k8s, k8s_apps=k8s_apps, k8s_auth=k8s_auth)
         or attack_tools.dispatch(name, args, k8s=k8s, k8s_apps=k8s_apps)
         or f"Unknown tool: {name}"
     )
