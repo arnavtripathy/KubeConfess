@@ -15,7 +15,7 @@ def check_patchable_deployments(k8s_apps, k8s_auth, namespace: str = "all") -> s
         patchable = []
 
         for dep in deps.items:
-            ns   = dep.metadata.namespace
+            ns = dep.metadata.namespace
             name = dep.metadata.name
 
             try:
@@ -35,37 +35,27 @@ def check_patchable_deployments(k8s_apps, k8s_auth, namespace: str = "all") -> s
                 allowed = False
 
             if allowed:
-                patchable.append({
-                    "ns":       ns,
-                    "name":     name,
-                    "sa":       dep.spec.template.spec.service_account_name or "default",
-                    "replicas": dep.spec.replicas or 1,
-                    "image":    dep.spec.template.spec.containers[0].image,
-                })
+                patchable.append(
+                    {
+                        "ns": ns,
+                        "name": name,
+                        "sa": dep.spec.template.spec.service_account_name or "default",
+                        "replicas": dep.spec.replicas or 1,
+                        "image": dep.spec.template.spec.containers[0].image,
+                    }
+                )
 
         if not patchable:
-            return (
-                f"✓ No patchable deployments found — "
-                f"current identity cannot patch any of the "
-                f"{len(deps.items)} deployment(s) checked."
-            )
+            return f"✓ No patchable deployments found — current identity cannot patch any of the {len(deps.items)} deployment(s) checked."
 
-        lines = [
-            f"⚠ Found {len(patchable)} patchable deployment(s) "
-            f"out of {len(deps.items)} total:\n"
-        ]
+        lines = [f"⚠ Found {len(patchable)} patchable deployment(s) out of {len(deps.items)} total:\n"]
 
         for d in patchable:
             lines.append(f"  {d['ns']}/{d['name']}")
             lines.append(f"    SA:       {d['sa']}")
             lines.append(f"    Replicas: {d['replicas']}")
             lines.append(f"    Image:    {d['image']}")
-            lines.append(
-                f"    Command:  inject_deployment("
-                f"deployment={d['name']}, "
-                f"namespace={d['ns']}, "
-                f"image=<your-image>)"
-            )
+            lines.append(f"    Command:  inject_deployment(deployment={d['name']}, namespace={d['ns']}, image=<your-image>)")
             lines.append("")
 
         return "\n".join(lines)
@@ -88,13 +78,8 @@ definition = {
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "namespace": {
-                    "type": "string",
-                    "description": "Namespace to check, or 'all' for cluster-wide."
-                }
-            },
-            "required": []
-        }
-    }
+            "properties": {"namespace": {"type": "string", "description": "Namespace to check, or 'all' for cluster-wide."}},
+            "required": [],
+        },
+    },
 }
