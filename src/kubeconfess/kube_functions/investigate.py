@@ -4,19 +4,19 @@ then sends everything to Claude in one shot for analysis.
 No agentic loop — guaranteed to stop.
 """
 
-from kube_functions.attack.harvest_secrets import harvest_secrets
-from kube_functions.attack.steal_tokens import steal_tokens
-from kube_functions.list.clusterrolebindings import list_clusterrolebindings
-from kube_functions.list.clusterroles import list_clusterroles
-from kube_functions.list.permissions import list_permissions
-from kube_functions.list.pods import list_pods
-from kube_functions.list.rolebindings import list_rolebindings
-from kube_functions.list.roles import list_roles
-from kube_functions.list.secrets import list_secrets
-from kube_functions.list.serviceaccounts import list_serviceaccounts
-from kube_functions.security.hostpath_mounts import check_hostpath_mounts
-from kube_functions.security.privileged import check_privileged_pods
-from kube_functions.security.root_containers import check_root_containers
+from kubeconfess.kube_functions.attack.harvest_secrets import harvest_secrets
+from kubeconfess.kube_functions.attack.steal_tokens import steal_tokens
+from kubeconfess.kube_functions.list.clusterrolebindings import list_clusterrolebindings
+from kubeconfess.kube_functions.list.clusterroles import list_clusterroles
+from kubeconfess.kube_functions.list.permissions import list_permissions
+from kubeconfess.kube_functions.list.pods import list_pods
+from kubeconfess.kube_functions.list.rolebindings import list_rolebindings
+from kubeconfess.kube_functions.list.roles import list_roles
+from kubeconfess.kube_functions.list.secrets import list_secrets
+from kubeconfess.kube_functions.list.serviceaccounts import list_serviceaccounts
+from kubeconfess.kube_functions.security.hostpath_mounts import check_hostpath_mounts
+from kubeconfess.kube_functions.security.privileged import check_privileged_pods
+from kubeconfess.kube_functions.security.root_containers import check_root_containers
 
 
 def _parse_target(target: str) -> tuple:

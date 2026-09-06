@@ -110,14 +110,14 @@ export MODEL_NAME="claude-haiku-4-5"             # or gpt-4o, llama3, etc.
 ### Run — external mode
 
 ```bash
-python main.py --kubeconfig ~/.kube/config
+kubeconfess --kubeconfig ~/.kube/config
 ```
 
 ### Run — in-cluster mode
 
 ```bash
 export API_KEY=sk-ant-...
-python main.py --incluster
+kubeconfess --incluster
 ```
 
 ---
@@ -177,7 +177,7 @@ export API_KEY=sk-ant-...
 git clone https://github.com/arnavtripathy/KubeConfess.git
 cd KubeConfess
 pip install .
-python main.py --incluster
+kubeconfess --incluster
 ```
 
 **If the pod is Alpine (minimal image):**
@@ -226,7 +226,7 @@ git clone https://github.com/arnavtripathy/KubeConfess.git
 cd KubeConfess
 pip install .
 export API_KEY=sk-ant-...
-python main.py --incluster
+kubeconfess --incluster
 ```
 
 **Once running in-cluster, start here:**
@@ -288,45 +288,54 @@ The AI never sees your Python implementation — it only sees the tool's `name`,
 
 ### Project layout
 
+KubeConfess uses a standard `src/` layout so it installs and imports as a single `kubeconfess` package (no top-level module name collisions), while `python main.py` at the repo root keeps working exactly as before as a thin shim into the package.
+
 ```
 KubeConfess/
-├── main.py                          ← CLI only
-├── agent.py                         ← AI client, tool dispatch, agent loop
-├── requirements.txt
+├── main.py                              ← back-compat shim: `python main.py ...`
 │
-├── config/
-│   └── exceptions.py                ← namespace exceptions for known risks
+├── src/kubeconfess/
+│   ├── main.py                          ← CLI only
+│   ├── agent.py                         ← AI client, tool dispatch, agent loop
+│   │
+│   ├── config/
+│   │   └── vars.py                      ← env-var config (API_KEY, BASE_URL, ...)
+│   │
+│   └── kube_functions/
+│       ├── connector.py                 ← kubeconfig / incluster config, returns k8s clients
+│       ├── prompts.py                   ← system prompt + investigate prompt
+│       ├── investigate.py               ← fixed tool sequence for investigate mode
+│       │
+│       ├── list/
+│       │   ├── __init__.py              ← registry for listing tools
+│       │   ├── pods.py
+│       │   ├── deployments.py
+│       │   ├── services.py
+│       │   ├── namespaces.py
+│       │   ├── permissions.py
+│       │   ├── roles.py
+│       │   ├── clusterroles.py
+│       │   ├── rolebindings.py
+│       │   ├── serviceaccounts.py
+│       │   └── secrets.py
+│       │
+│       ├── security/
+│       │   ├── __init__.py              ← registry for security tools
+│       │   ├── privileged.py
+│       │   ├── root_containers.py
+│       │   ├── hostpath_mounts.py
+│       │   └── pod_self_scan.py         ← in-cluster pod self-enumeration
+│       │
+│       └── attack/                      ← post-exploitation capabilities
+│           ├── __init__.py              ← registry for attack tools
+│           ├── steal_tokens.py          ← steal static SA tokens from secrets
+│           └── harvest_secrets.py       ← decode and dump secret values
 │
-└── kube_functions/
-    ├── connector.py                 ← kubeconfig / incluster config, returns k8s clients
-    ├── prompts.py                   ← system prompt + investigate prompt
-    ├── investigate.py               ← fixed tool sequence for investigate mode
-    │
-    ├── list/
-    │   ├── __init__.py              ← registry for listing tools
-    │   ├── pods.py
-    │   ├── deployments.py
-    │   ├── services.py
-    │   ├── namespaces.py
-    │   ├── permissions.py
-    │   ├── roles.py
-    │   ├── clusterroles.py
-    │   ├── rolebindings.py
-    │   ├── serviceaccounts.py
-    │   └── secrets.py
-    │
-    ├── security/
-    │   ├── __init__.py              ← registry for security tools
-    │   ├── privileged.py
-    │   ├── root_containers.py
-    │   ├── hostpath_mounts.py
-    │   └── pod_self_scan.py         ← in-cluster pod self-enumeration
-    │
-    └── attack/                      ← post-exploitation capabilities
-        ├── __init__.py              ← registry for attack tools
-        ├── steal_tokens.py          ← steal static SA tokens from secrets
-        └── harvest_secrets.py       ← decode and dump secret values
+└── tests/
+    └── test_*.py                        ← import from `kubeconfess...` against the installed package
 ```
+
+Once installed (`pip install .`), an equivalent `kubeconfess` console command is also available — `kubeconfess --kubeconfig ~/.kube/config` works the same as `python main.py --kubeconfig ~/.kube/config`.
 
 ---
 
@@ -382,7 +391,7 @@ The `description` in the definition is what the AI reads to decide whether to ca
 Once the file exists, add two lines to `kube_functions/list/__init__.py`:
 
 ```python
-from kube_functions.list.nodes import list_nodes, definition as nodes_def
+from kubeconfess.kube_functions.list.nodes import list_nodes, definition as nodes_def
 
 definitions = [..., nodes_def]  # add nodes_def to the existing list
 

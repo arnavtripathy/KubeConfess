@@ -1,4 +1,4 @@
-from kube_functions.exceptions import NAMESPACE_EXCEPTIONS
+from kubeconfess.kube_functions.exceptions import NAMESPACE_EXCEPTIONS
 
 
 def _build_exceptions_block() -> str:
