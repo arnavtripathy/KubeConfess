@@ -25,8 +25,12 @@ def exec_pod(k8s, pod_name: str, namespace: str, command: str) -> str:
         if e.status == 404:
             return f"✗ Pod {namespace}/{pod_name} not found."
         return f"Kubernetes API error: {e.status} {e.reason}"
-    except Exception as e:
-        return f"Error: {e}"
+    except ValueError as e:
+        # shlex.split() rejects malformed command strings (e.g. an unbalanced quote)
+        return f"✗ Invalid command {command!r}: {e}"
+    except OSError as e:
+        # socket-level failure reaching the API server / exec stream
+        return f"✗ Exec connection error on {namespace}/{pod_name}: {e}"
 
 
 definition = {

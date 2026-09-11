@@ -59,7 +59,7 @@ def gather(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, on_step=None) -> str:
             on_step(label)
         try:
             result = fn(*args, **kwargs)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 # We want to catch all exceptions here to report errors in the output.
             result = f"Error: {e}"
         results.append(_section(label, result))
 

@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from kubernetes.client.rest import ApiException
+
 from kubeconfess.kube_functions.list.pods import list_pods
 
 
@@ -30,3 +32,30 @@ def test_list_pods_lists_namespace_and_name():
     k8s.list_namespaced_pod.assert_called_once_with(namespace="payments")
     assert "payments/api-abc123" in result
     assert "serviceAccount: default" in result
+
+
+def test_list_pods_403_forbidden():
+    k8s = MagicMock()
+    k8s.list_pod_for_all_namespaces.side_effect = ApiException(status=403, reason="Forbidden")
+
+    result = list_pods(k8s)
+
+    assert result == "Kubernetes API error: 403 Forbidden"
+
+
+def test_list_pods_404_not_found():
+    k8s = MagicMock()
+    k8s.list_namespaced_pod.side_effect = ApiException(status=404, reason="Not Found")
+
+    result = list_pods(k8s, namespace="nonexistent")
+
+    assert result == "Kubernetes API error: 404 Not Found"
+
+
+def test_list_pods_500_server_error():
+    k8s = MagicMock()
+    k8s.list_pod_for_all_namespaces.side_effect = ApiException(status=500, reason="Internal Server Error")
+
+    result = list_pods(k8s)
+
+    assert result == "Kubernetes API error: 500 Internal Server Error"

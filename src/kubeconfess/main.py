@@ -160,7 +160,7 @@ def main():
         else:
             k8s, k8s_apps, k8s_auth, k8s_rbac = connect(kubeconfig_path=args.kubeconfig)
             console.print(f"  [bold green]✓[/bold green] [dim]Connected via[/dim] [cyan]{args.kubeconfig}[/cyan]\n")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 # We want to catch all exceptions here to report connection errors.
         console.print(f"  [bold red]✗[/bold red] Failed to connect: {e}")
         return
 
