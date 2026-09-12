@@ -81,7 +81,7 @@ def _is_interesting_key(key: str) -> bool:
 def _decode(encoded: str) -> str:
     try:
         return base64.b64decode(encoded).decode("utf-8", errors="replace")
-    except Exception:
+    except (ValueError, TypeError):
         return "[decode error]"
 
 

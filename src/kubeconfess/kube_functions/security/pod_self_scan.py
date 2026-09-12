@@ -63,76 +63,114 @@ def _get_identity() -> dict:
     }
     try:
         result["namespace"] = Path(SA_NS_PATH).read_text().strip()
+    except FileNotFoundError:
+        result["namespace"] = "unknown"
+    except OSError as e:
+        result["namespace"] = "unknown"
+        result["namespace_error"] = f"could not read {SA_NS_PATH}: {e}"
+
+    try:
         token = Path(SA_TOKEN_PATH).read_text().strip()
-        result["token_present"] = True
-        parts = token.split(".")
-        if len(parts) == 3:
-            payload = json.loads(base64.b64decode(parts[1] + "==").decode("utf-8", errors="replace"))
-            k8s = payload.get("kubernetes.io", {})
-            result["serviceaccount"] = k8s.get("serviceaccount", {}).get("name", "unknown")
-            result["pod_name"] = k8s.get("pod", {}).get("name", "unknown")
-            result["node_name"] = k8s.get("node", {}).get("name", "unknown")
-            result["token_expiry"] = payload.get("exp", "no expiry — static token ⚠")
     except FileNotFoundError:
         result["token_present"] = False
-    except Exception as e:
-        result["error"] = str(e)
+        return result
+    except OSError as e:
+        result["token_present"] = False
+        result["token_error"] = f"could not read {SA_TOKEN_PATH}: {e}"
+        return result
+
+    result["token_present"] = True
+    parts = token.split(".")
+    if len(parts) != 3:
+        result["token_error"] = "malformed service account token (expected a 3-part JWT)"
+        return result
+
+    try:
+        payload = json.loads(base64.b64decode(parts[1] + "==").decode("utf-8", errors="replace"))
+    except (ValueError, TypeError) as e:
+        result["token_error"] = f"could not decode token payload: {e}"
+        return result
+
+    k8s = payload.get("kubernetes.io", {})
+    result["serviceaccount"] = k8s.get("serviceaccount", {}).get("name", "unknown")
+    result["pod_name"] = k8s.get("pod", {}).get("name", "unknown")
+    result["node_name"] = k8s.get("node", {}).get("name", "unknown")
+    result["token_expiry"] = payload.get("exp", "no expiry — static token ⚠")
     return result
 
 
 def _get_capabilities() -> dict:
     try:
-        for line in Path("/proc/self/status").read_text().splitlines():
-            if line.startswith("CapEff:"):
+        status_text = Path("/proc/self/status").read_text()
+    except FileNotFoundError:
+        return {"error": "/proc/self/status not found (not a Linux host?)"}
+    except OSError as e:
+        return {"error": f"could not read /proc/self/status: {e}"}
+
+    for line in status_text.splitlines():
+        if line.startswith("CapEff:"):
+            try:
                 cap_hex = int(line.split(":")[1].strip(), 16)
-                return {
-                    "CapEff": hex(cap_hex),
-                    "is_privileged": cap_hex >= 0x0000003FFFFFFFFF,
-                    "has_CAP_SYS_ADMIN": bool(cap_hex & (1 << 21)),
-                    "has_CAP_NET_ADMIN": bool(cap_hex & (1 << 12)),
-                    "has_CAP_SYS_PTRACE": bool(cap_hex & (1 << 19)),
-                }
-    except Exception as e:
-        return {"error": str(e)}
-    return {}
+            except (IndexError, ValueError) as e:
+                return {"error": f"could not parse CapEff line: {e}"}
+            return {
+                "CapEff": hex(cap_hex),
+                "is_privileged": cap_hex >= 0x0000003FFFFFFFFF,
+                "has_CAP_SYS_ADMIN": bool(cap_hex & (1 << 21)),
+                "has_CAP_NET_ADMIN": bool(cap_hex & (1 << 12)),
+                "has_CAP_SYS_PTRACE": bool(cap_hex & (1 << 19)),
+            }
+    return {"error": "CapEff line not found in /proc/self/status"}
 
 
-def _get_mounts() -> list:
-    suspicious = []
+def _get_mounts() -> dict:
     try:
-        for line in Path("/proc/mounts").read_text().splitlines():
-            parts = line.split()
-            if len(parts) < 2:
-                continue
-            mp = parts[1]
-            if any(
-                mp.startswith(p)
-                for p in [
-                    "/host",
-                    "/rootfs",
-                    "/proc/host",
-                    "/etc/kubernetes",
-                    "/var/lib/kubelet",
-                    "/var/lib/docker",
-                    "/var/run/docker",
-                ]
-            ):
-                suspicious.append(mp)
-    except Exception:
-        pass
-    return suspicious
+        lines = Path("/proc/mounts").read_text().splitlines()
+    except FileNotFoundError:
+        return {"suspicious": [], "error": "/proc/mounts not found (not a Linux host?)"}
+    except OSError as e:
+        return {"suspicious": [], "error": f"could not read /proc/mounts: {e}"}
+
+    suspicious = []
+    for line in lines:
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        mp = parts[1]
+        if any(
+            mp.startswith(p)
+            for p in [
+                "/host",
+                "/rootfs",
+                "/proc/host",
+                "/etc/kubernetes",
+                "/var/lib/kubelet",
+                "/var/lib/docker",
+                "/var/run/docker",
+            ]
+        ):
+            suspicious.append(mp)
+    return {"suspicious": suspicious, "error": None}
 
 
 def _get_pid_namespace() -> dict:
     try:
         pids = len(list(Path("/proc").glob("[0-9]*")))
-        return {"visible_processes": pids, "likely_host_pid": pids > 50}
-    except Exception as e:
-        return {"error": str(e)}
+    except OSError as e:
+        return {"error": f"could not enumerate /proc: {e}"}
+    return {"visible_processes": pids, "likely_host_pid": pids > 50}
 
 
-def _get_runtime_sockets() -> list:
-    return [s for s in RUNTIME_SOCKETS if Path(s).exists()]
+def _get_runtime_sockets() -> dict:
+    found = []
+    errors = {}
+    for s in RUNTIME_SOCKETS:
+        try:
+            if Path(s).exists():
+                found.append(s)
+        except OSError as e:
+            errors[s] = f"could not stat: {e}"
+    return {"sockets": found, "errors": errors}
 
 
 def _get_env_secrets() -> list:
@@ -145,25 +183,53 @@ def _get_env_secrets() -> list:
     return findings
 
 
-def _get_sensitive_files() -> list:
+def _get_sensitive_files() -> dict:
     found = []
+    errors = {}
+
     for path_str in SENSITIVE_FILES:
         p = Path(path_str)
-        if p.exists() and p.is_file():
-            try:
-                found.append({"path": path_str, "content": p.read_text(errors="replace")[:500]})
-            except Exception:
-                found.append({"path": path_str, "content": "[unreadable]"})
+        try:
+            is_file = p.exists() and p.is_file()
+        except OSError as e:
+            errors[path_str] = f"could not stat: {e}"
+            continue
+        if not is_file:
+            continue
+        try:
+            found.append({"path": path_str, "content": p.read_text(errors="replace")[:500]})
+        except OSError as e:
+            found.append({"path": path_str, "content": "[unreadable]"})
+            errors[path_str] = str(e)
+
     for dir_str in SENSITIVE_DIRS:
         d = Path(dir_str)
-        if d.exists() and d.is_dir():
-            for f in d.rglob("*"):
-                if f.is_file():
-                    try:
-                        found.append({"path": str(f), "content": f.read_text(errors="replace")[:500]})
-                    except Exception:
-                        found.append({"path": str(f), "content": "[unreadable]"})
-    return found
+        try:
+            is_dir = d.exists() and d.is_dir()
+        except OSError as e:
+            errors[dir_str] = f"could not stat: {e}"
+            continue
+        if not is_dir:
+            continue
+        try:
+            entries = list(d.rglob("*"))
+        except OSError as e:
+            errors[dir_str] = f"could not walk directory: {e}"
+            continue
+        for f in entries:
+            try:
+                if not f.is_file():
+                    continue
+            except OSError as e:
+                errors[str(f)] = f"could not stat: {e}"
+                continue
+            try:
+                found.append({"path": str(f), "content": f.read_text(errors="replace")[:500]})
+            except OSError as e:
+                found.append({"path": str(f), "content": "[unreadable]"})
+                errors[str(f)] = str(e)
+
+    return {"files": found, "errors": errors}
 
 
 def _probe_metadata() -> dict:
@@ -180,7 +246,7 @@ def _probe_metadata() -> dict:
             results[cloud] = {"reachable": False}
         except requests.exceptions.Timeout:
             results[cloud] = {"reachable": False, "note": "timeout"}
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             results[cloud] = {"reachable": False, "error": str(e)}
     return results
 
@@ -196,48 +262,62 @@ def scan_current_pod() -> str:
     lines.append(f"  running as: {uid_str}")
     if identity.get("token_present"):
         lines.append(f"  namespace:      {identity.get('namespace', 'unknown')}")
+        if identity.get("namespace_error"):
+            lines.append(f"    ? {identity['namespace_error']}")
         lines.append(f"  serviceaccount: {identity.get('serviceaccount', 'unknown')}")
         lines.append(f"  pod:            {identity.get('pod_name', 'unknown')}")
         lines.append(f"  node:           {identity.get('node_name', 'unknown')}")
         lines.append(f"  token expiry:   {identity.get('token_expiry', 'unknown')}")
+        if identity.get("token_error"):
+            lines.append(f"  ? token could not be fully parsed — {identity['token_error']}")
     else:
         lines.append("  sa token: ✗ not mounted — no direct K8s API access")
+        if identity.get("token_error"):
+            lines.append(f"    ? {identity['token_error']}")
     lines.append("")
 
     # ── Capabilities ──────────────────────────────────────────────────────────
     caps = _get_capabilities()
     lines.append("CAPABILITIES:")
-    cap_findings = []
-    if caps.get("is_privileged"):
-        cap_findings.append("  ⚠ CRITICAL — privileged mode")
-    if caps.get("has_CAP_SYS_ADMIN"):
-        cap_findings.append("  ⚠ CRITICAL — CAP_SYS_ADMIN")
-    if caps.get("has_CAP_NET_ADMIN"):
-        cap_findings.append("  ⚠ HIGH     — CAP_NET_ADMIN")
-    if caps.get("has_CAP_SYS_PTRACE"):
-        cap_findings.append("  ⚠ HIGH     — CAP_SYS_PTRACE")
-    if cap_findings:
-        lines.extend(cap_findings)
+    if "error" in caps:
+        lines.append(f"  ? could not determine — {caps['error']}")
     else:
-        lines.append("  ✓ no dangerous capabilities")
-    lines.append(f"  CapEff: {caps.get('CapEff', 'unknown')}")
+        cap_findings = []
+        if caps.get("is_privileged"):
+            cap_findings.append("  ⚠ CRITICAL — privileged mode")
+        if caps.get("has_CAP_SYS_ADMIN"):
+            cap_findings.append("  ⚠ CRITICAL — CAP_SYS_ADMIN")
+        if caps.get("has_CAP_NET_ADMIN"):
+            cap_findings.append("  ⚠ HIGH     — CAP_NET_ADMIN")
+        if caps.get("has_CAP_SYS_PTRACE"):
+            cap_findings.append("  ⚠ HIGH     — CAP_SYS_PTRACE")
+        if cap_findings:
+            lines.extend(cap_findings)
+        else:
+            lines.append("  ✓ no dangerous capabilities")
+        lines.append(f"  CapEff: {caps.get('CapEff', 'unknown')}")
     lines.append("")
 
     # ── Runtime sockets ───────────────────────────────────────────────────────
-    sockets = _get_runtime_sockets()
+    socket_result = _get_runtime_sockets()
+    sockets = socket_result["sockets"]
     lines.append("RUNTIME SOCKETS:")
     if sockets:
         for s in sockets:
             lines.append(f"  ⚠ CRITICAL — {s}")
     else:
         lines.append("  ✓ none found")
+    for path, err in socket_result.get("errors", {}).items():
+        lines.append(f"  ? could not check {path} — {err}")
     lines.append("")
 
     # ── Host mounts ───────────────────────────────────────────────────────────
-    mounts = _get_mounts()
+    mount_result = _get_mounts()
     lines.append("SUSPICIOUS HOST MOUNTS:")
-    if mounts:
-        for m in mounts:
+    if mount_result.get("error"):
+        lines.append(f"  ? could not check — {mount_result['error']}")
+    elif mount_result["suspicious"]:
+        for m in mount_result["suspicious"]:
             lines.append(f"  ⚠ CRITICAL — {m}")
     else:
         lines.append("  ✓ none found")
@@ -246,7 +326,9 @@ def scan_current_pod() -> str:
     # ── PID namespace ─────────────────────────────────────────────────────────
     pid = _get_pid_namespace()
     lines.append("PID NAMESPACE:")
-    if pid.get("likely_host_pid"):
+    if "error" in pid:
+        lines.append(f"  ? could not check — {pid['error']}")
+    elif pid.get("likely_host_pid"):
         lines.append(f"  ⚠ CRITICAL — {pid['visible_processes']} processes visible (likely host PID namespace)")
     else:
         lines.append(f"  ✓ {pid.get('visible_processes', '?')} processes (isolated)")
@@ -276,7 +358,8 @@ def scan_current_pod() -> str:
     lines.append("")
 
     # ── Sensitive files ───────────────────────────────────────────────────────
-    sensitive = _get_sensitive_files()
+    sensitive_result = _get_sensitive_files()
+    sensitive = sensitive_result["files"]
     lines.append("SENSITIVE FILES:")
     if sensitive:
         for f in sensitive:
@@ -284,6 +367,8 @@ def scan_current_pod() -> str:
             lines.append(f"    {f['content'][:150]}")
     else:
         lines.append("  ✓ none found")
+    for path, err in sensitive_result.get("errors", {}).items():
+        lines.append(f"  ? could not check {path} — {err}")
 
     return "\n".join(lines)
 

