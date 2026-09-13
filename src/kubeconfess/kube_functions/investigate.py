@@ -39,6 +39,10 @@ def _parse_target(target: str) -> tuple:
         name = name.strip()
         namespace = namespace.strip()
 
+    #Fix for namespaces being specified as the target, e.g. "namespace/payments"
+    if kind == "namespace":
+        namespace = name
+
     return kind, name.strip(), namespace
 
 
