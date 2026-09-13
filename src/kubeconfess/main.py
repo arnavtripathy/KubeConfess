@@ -28,7 +28,7 @@ BANNER = """
 """
 
 
-def print_banner():
+def print_banner() -> None:
     console.print(BANNER)
     console.print(
         Panel.fit(
@@ -43,16 +43,16 @@ def print_banner():
     console.print()
 
 
-def print_connection(kubeconfig: str):
+def print_connection(kubeconfig: str) -> None:
     console.print(f"  [bold green]✓[/bold green] [dim]Connected via[/dim] [cyan]{kubeconfig}[/cyan]\n")
 
 
-def print_tool_call(name: str, args: dict):
+def print_tool_call(name: str, args: dict[str, str]) -> None:
     args_str = ", ".join(f"{k}=[cyan]{v}[/cyan]" for k, v in args.items()) if args else ""
     console.print(f"  [dim]⚙  {name}({args_str})[/dim]")
 
 
-def print_reply(reply: str, investigate: bool = False):
+def print_reply(reply: str, investigate: bool = False) -> None:
     text = Text.from_markup(
         reply.replace("✓", "[bold green]✓[/bold green]")
         .replace("⚠", "[bold yellow]⚠[/bold yellow]")
@@ -81,10 +81,10 @@ def get_input() -> str:
         return "exit"
 
 
-def send_with_spinner(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, prompt):
+def send_with_spinner(messages: list[dict], k8s, k8s_apps, k8s_auth, k8s_rbac, prompt: str) -> str:
     with Live(Spinner("dots", text="[dim]thinking...[/dim]"), console=console, transient=True) as live:
 
-        def on_tool(name, args):
+        def on_tool(name: str, args: dict) -> None:
             live.stop()
             print_tool_call(name, args)
             live.start()
@@ -92,7 +92,7 @@ def send_with_spinner(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, prompt):
         return send(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, system_prompt=prompt, on_tool_call=on_tool)
 
 
-def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages):
+def run_investigate(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: list[dict]) -> str:
     """
     Gather all data with fixed tool calls (no AI loop),
     then send to Claude once for analysis.
@@ -101,7 +101,7 @@ def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages):
     # ── Step 1: gather data with progress display ─────────────────────────────
     with Live(console=console, transient=True) as live:
 
-        def on_step(label):
+        def on_step(label: str) -> None:
             live.update(Spinner("dots", text=f"[dim]gathering: {label}[/dim]"))
 
         data = gather(target, k8s, k8s_apps, k8s_auth, k8s_rbac, on_step=on_step)
@@ -122,8 +122,7 @@ def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages):
             # no tools= — Claude cannot call tools here, must write report
         )
 
-    reply = response.choices[0].message.content
-
+    reply = response.choices[0].message.content or ""
     # Add to conversation history so follow-ups are grounded in the findings
     messages.append({"role": "user", "content": analysis_message})
     messages.append({"role": "assistant", "content": reply})
@@ -131,7 +130,7 @@ def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages):
     return reply
 
 
-def parse_investigate(user_input: str):
+def parse_investigate(user_input: str) -> str | None:
     lower = user_input.lower().strip()
     if not lower.startswith("investigate"):
         return None
@@ -141,7 +140,7 @@ def parse_investigate(user_input: str):
     return parts[1].strip()
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="KubeConfess — Kubernetes AI Agent")
     parser.add_argument("--kubeconfig", help="Path to kubeconfig file")
     parser.add_argument("--incluster", action="store_true", help="Run inside a pod using mounted SA token")
@@ -164,7 +163,7 @@ def main():
         console.print(f"  [bold red]✗[/bold red] Failed to connect: {e}")
         return
 
-    messages = []
+    messages: list[dict[str, str]] = []
 
     while True:
         try:

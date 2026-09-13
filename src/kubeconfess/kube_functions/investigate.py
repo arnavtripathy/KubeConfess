@@ -54,7 +54,7 @@ def gather(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, on_step=None) -> str:
     kind, name, namespace = _parse_target(target)
     results = []
 
-    def run(label, fn, *args, **kwargs):
+    def run(label, fn, *args, **kwargs) -> None:
         if on_step:
             on_step(label)
         try:

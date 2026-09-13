@@ -1,7 +1,8 @@
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 
-def _check_root(pod) -> list:
+def _check_root(pod) -> list[dict[str, str]]:
     findings = []
     for container in pod.spec.containers:
         sc = container.security_context
@@ -28,7 +29,7 @@ def _check_root(pod) -> list:
     return findings
 
 
-def _format_findings(findings: list, scope: str) -> str:
+def _format_findings(findings: list[dict[str, str]], scope: str) -> str:
     if not findings:
         return f"✓ No root containers found in: {scope}"
 
@@ -41,7 +42,7 @@ def _format_findings(findings: list, scope: str) -> str:
     return "\n".join(lines)
 
 
-def check_root_containers(k8s, namespace: str = "all", pod: str = None, deployment: str = None, k8s_apps=None) -> str:
+def check_root_containers(k8s, namespace: str = "all", pod: str | None = None, deployment: str | None = None, k8s_apps=None) -> str:
     try:
         # ── Single pod ────────────────────────────────────────────────────────
         if pod:
@@ -80,7 +81,7 @@ def check_root_containers(k8s, namespace: str = "all", pod: str = None, deployme
         return f"Kubernetes API error: {e.status} {e.reason}"
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "check_root_containers",

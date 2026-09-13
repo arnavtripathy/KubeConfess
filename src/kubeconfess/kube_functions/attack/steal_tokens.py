@@ -2,6 +2,7 @@ import base64
 import json
 
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 INTERESTING_PATTERNS = [
     "admin",
@@ -138,7 +139,7 @@ def steal_tokens(k8s, namespace: str = "all") -> str:
     return "\n".join(lines)
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "steal_tokens",

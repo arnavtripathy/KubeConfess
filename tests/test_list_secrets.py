@@ -6,7 +6,7 @@ from kubernetes.client.rest import ApiException
 from kubeconfess.kube_functions.list.secrets import list_secrets
 
 
-def test_list_secrets_403_forbidden():
+def test_list_secrets_403_forbidden() -> None:
     k8s = MagicMock()
     k8s.list_secret_for_all_namespaces.side_effect = ApiException(status=403, reason="Forbidden")
 
@@ -15,7 +15,7 @@ def test_list_secrets_403_forbidden():
     assert result == "Kubernetes API error: 403 Forbidden"
 
 
-def test_list_secrets_500_server_error():
+def test_list_secrets_500_server_error() -> None:
     k8s = MagicMock()
     k8s.list_secret_for_all_namespaces.side_effect = ApiException(status=500, reason="Internal Server Error")
 
@@ -24,7 +24,7 @@ def test_list_secrets_500_server_error():
     assert result == "Kubernetes API error: 500 Internal Server Error"
 
 
-def test_list_secrets_404_reports_missing_target():
+def test_list_secrets_404_reports_missing_target() -> None:
     k8s = MagicMock()
     k8s.list_namespaced_secret.side_effect = ApiException(status=404, reason="Not Found")
 
@@ -33,7 +33,7 @@ def test_list_secrets_404_reports_missing_target():
     assert result == "'ghost' not found in namespace 'ghost'."
 
 
-def test_list_secrets_happy_path_lists_keys_and_hides_system():
+def test_list_secrets_happy_path_lists_keys_and_hides_system() -> None:
     """Only the k8s API is faked; real filtering and formatting run — one
     application secret is listed while a system SA-token secret is hidden."""
     app_secret = SimpleNamespace(

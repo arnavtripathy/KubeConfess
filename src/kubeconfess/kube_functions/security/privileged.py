@@ -1,7 +1,8 @@
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 
-def _check_containers(pod) -> list:
+def _check_containers(pod) -> list[dict[str, str]]:
     """Returns privileged container findings for a given pod object."""
     findings = []
     for container in pod.spec.containers:
@@ -17,7 +18,7 @@ def _check_containers(pod) -> list:
     return findings
 
 
-def _format_findings(findings: list, scope: str) -> str:
+def _format_findings(findings: list[dict[str, str]], scope: str) -> str:
     """Formats findings list into a human-readable result string."""
     if not findings:
         return f"✓ No privileged containers found in: {scope}"
@@ -30,7 +31,7 @@ def _format_findings(findings: list, scope: str) -> str:
     return "\n".join(lines)
 
 
-def check_privileged_pods(k8s, k8s_apps, namespace: str = "all", pod: str = None, deployment: str = None) -> str:
+def check_privileged_pods(k8s, k8s_apps, namespace: str = "all", pod: str | None = None, deployment: str | None = None) -> str:
     try:
         # ── Single pod ────────────────────────────────────────────────────────
         if pod:
@@ -76,7 +77,7 @@ def check_privileged_pods(k8s, k8s_apps, namespace: str = "all", pod: str = None
         return f"Kubernetes API error: {e.status} {e.reason}"
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "check_privileged_pods",

@@ -2,6 +2,7 @@ import shlex
 
 from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 
 def exec_pod(k8s, pod_name: str, namespace: str, command: str) -> str:
@@ -33,7 +34,7 @@ def exec_pod(k8s, pod_name: str, namespace: str, command: str) -> str:
         return f"✗ Exec connection error on {namespace}/{pod_name}: {e}"
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "exec_pod",

@@ -5,6 +5,7 @@ import socket
 from pathlib import Path
 
 import requests
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 SA_TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 SA_NS_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
@@ -57,8 +58,8 @@ METADATA_ENDPOINTS = {
 
 def _get_identity() -> dict:
     result = {
-        "uid": os.getuid(),
-        "is_root": os.getuid() == 0,
+        "uid": os.getuid(),  # type: ignore[attr-defined]
+        "is_root": os.getuid() == 0,  # type: ignore[attr-defined]
         "hostname": socket.gethostname(),
     }
     try:
@@ -373,7 +374,7 @@ def scan_current_pod() -> str:
     return "\n".join(lines)
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "scan_current_pod",

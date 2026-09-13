@@ -1,7 +1,9 @@
 import json
+from typing import cast
 
 from kubernetes.client.rest import ApiException
 from openai import OpenAI
+from openai.types.chat import ChatCompletionFunctionToolParam, ChatCompletionMessageFunctionToolCall
 
 import kubeconfess.kube_functions.attack as attack_tools
 import kubeconfess.kube_functions.list as list_tools
@@ -11,14 +13,14 @@ from kubeconfess.kube_functions.prompts import SYSTEM_PROMPT
 
 client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
-definitions = [
+definitions: list[ChatCompletionFunctionToolParam] = [
     *list_tools.definitions,
     *security_tools.definitions,
     *attack_tools.definitions,
 ]
 
 
-def dispatch(name, args, k8s, k8s_apps, k8s_auth, k8s_rbac):
+def dispatch(name, args, k8s, k8s_apps, k8s_auth, k8s_rbac) -> str:
     return (
         list_tools.dispatch(name, args, k8s=k8s, k8s_apps=k8s_apps, k8s_auth=k8s_auth, k8s_rbac=k8s_rbac)
         or security_tools.dispatch(name, args, k8s=k8s, k8s_apps=k8s_apps, k8s_auth=k8s_auth)
@@ -27,7 +29,7 @@ def dispatch(name, args, k8s, k8s_apps, k8s_auth, k8s_rbac):
     )
 
 
-def send(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, system_prompt=SYSTEM_PROMPT, on_tool_call=None):
+def send(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, system_prompt=SYSTEM_PROMPT, on_tool_call=None) -> str:
     while True:
         response = client.chat.completions.create(
             model=MODEL_NAME,
@@ -38,9 +40,10 @@ def send(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, system_prompt=SYSTEM_PROMP
         msg = response.choices[0].message
         finish_reason = response.choices[0].finish_reason
 
-        if finish_reason == "tool_calls":
+        if finish_reason == "tool_calls" and msg.tool_calls:
             messages.append(msg)
-            for tool_call in msg.tool_calls:
+            for raw_tool_call in msg.tool_calls:
+                tool_call = cast(ChatCompletionMessageFunctionToolCall, raw_tool_call)
                 try:
                     args = json.loads(tool_call.function.arguments)
                 except (json.JSONDecodeError, ValueError) as e:
@@ -66,4 +69,4 @@ def send(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, system_prompt=SYSTEM_PROMP
 
         elif finish_reason == "stop":
             messages.append({"role": "assistant", "content": msg.content})
-            return msg.content
+            return msg.content or ""

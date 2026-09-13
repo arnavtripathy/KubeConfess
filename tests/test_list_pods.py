@@ -6,7 +6,7 @@ from kubernetes.client.rest import ApiException
 from kubeconfess.kube_functions.list.pods import list_pods
 
 
-def _make_pod(namespace, name, phase="Running", node="node-1", service_account="default"):
+def _make_pod(namespace: str, name: str, phase: str = "Running", node: str = "node-1", service_account: str = "default") -> SimpleNamespace:
     return SimpleNamespace(
         metadata=SimpleNamespace(namespace=namespace, name=name),
         status=SimpleNamespace(phase=phase),
@@ -14,7 +14,7 @@ def _make_pod(namespace, name, phase="Running", node="node-1", service_account="
     )
 
 
-def test_list_pods_no_pods_found():
+def test_list_pods_no_pods_found() -> None:
     k8s = MagicMock()
     k8s.list_pod_for_all_namespaces.return_value = SimpleNamespace(items=[])
 
@@ -23,7 +23,7 @@ def test_list_pods_no_pods_found():
     assert result == "No pods found in: all"
 
 
-def test_list_pods_lists_namespace_and_name():
+def test_list_pods_lists_namespace_and_name() -> None:
     k8s = MagicMock()
     k8s.list_namespaced_pod.return_value = SimpleNamespace(items=[_make_pod("payments", "api-abc123")])
 
@@ -34,7 +34,7 @@ def test_list_pods_lists_namespace_and_name():
     assert "serviceAccount: default" in result
 
 
-def test_list_pods_403_forbidden():
+def test_list_pods_403_forbidden() -> None:
     k8s = MagicMock()
     k8s.list_pod_for_all_namespaces.side_effect = ApiException(status=403, reason="Forbidden")
 
@@ -43,7 +43,7 @@ def test_list_pods_403_forbidden():
     assert result == "Kubernetes API error: 403 Forbidden"
 
 
-def test_list_pods_404_not_found():
+def test_list_pods_404_not_found() -> None:
     k8s = MagicMock()
     k8s.list_namespaced_pod.side_effect = ApiException(status=404, reason="Not Found")
 
@@ -52,7 +52,7 @@ def test_list_pods_404_not_found():
     assert result == "Kubernetes API error: 404 Not Found"
 
 
-def test_list_pods_500_server_error():
+def test_list_pods_500_server_error() -> None:
     k8s = MagicMock()
     k8s.list_pod_for_all_namespaces.side_effect = ApiException(status=500, reason="Internal Server Error")
 

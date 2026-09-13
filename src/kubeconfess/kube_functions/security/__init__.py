@@ -1,3 +1,5 @@
+from openai.types.chat import ChatCompletionFunctionToolParam
+
 from kubeconfess.kube_functions.security.hostpath_mounts import check_hostpath_mounts
 from kubeconfess.kube_functions.security.hostpath_mounts import definition as hostpath_def
 from kubeconfess.kube_functions.security.patchable_deployments import check_patchable_deployments
@@ -9,7 +11,7 @@ from kubeconfess.kube_functions.security.privileged import definition as privile
 from kubeconfess.kube_functions.security.root_containers import check_root_containers
 from kubeconfess.kube_functions.security.root_containers import definition as root_def
 
-definitions = [privileged_def, root_def, hostpath_def, self_scan_def, patchable_def]
+definitions: list[ChatCompletionFunctionToolParam] = [privileged_def, root_def, hostpath_def, self_scan_def, patchable_def]
 
 
 def dispatch(name: str, args: dict, k8s=None, k8s_apps=None, k8s_auth=None) -> str | None:

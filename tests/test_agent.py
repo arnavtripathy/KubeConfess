@@ -13,7 +13,7 @@ from kubernetes.client.rest import ApiException
 from kubeconfess import agent
 
 
-def _fake_client(tool_name="list_pods", arguments="{}"):
+def _fake_client(tool_name: str = "list_pods", arguments: str = "{}") -> MagicMock:
     """A client that returns one tool call, then a plain stop response."""
     tool_call = SimpleNamespace(id="call_1", function=SimpleNamespace(name=tool_name, arguments=arguments))
     tool_turn = SimpleNamespace(
@@ -25,9 +25,9 @@ def _fake_client(tool_name="list_pods", arguments="{}"):
     return client
 
 
-def _run(client, dispatch_side_effect=None):
+def _run(client: MagicMock, dispatch_side_effect=None) -> str:
     """Run send() with fakes and return the content of the tool message."""
-    messages = []
+    messages: list[dict] = []
     ctx = MagicMock()
     with patch.object(agent, "client", client):
         if dispatch_side_effect is not None:
@@ -41,27 +41,27 @@ def _run(client, dispatch_side_effect=None):
     return tool_messages[0]["content"]
 
 
-def test_malformed_json_arguments_reported():
+def test_malformed_json_arguments_reported() -> None:
     content = _run(_fake_client(arguments="{not valid json"))
     assert content.startswith("Error: Could not parse tool arguments for list_pods:")
 
 
-def test_api_exception_reported():
+def test_api_exception_reported() -> None:
     content = _run(_fake_client(), dispatch_side_effect=ApiException(status=403, reason="Forbidden"))
     assert content == "Kubernetes API error calling list_pods: 403 Forbidden"
 
 
-def test_argument_error_reported():
+def test_argument_error_reported() -> None:
     content = _run(_fake_client(), dispatch_side_effect=ValueError("bad namespace"))
     assert content == "Invalid argument to list_pods: ValueError: bad namespace"
 
 
-def test_os_error_reported():
+def test_os_error_reported() -> None:
     content = _run(_fake_client(), dispatch_side_effect=OSError("Permission denied"))
     assert content == "File/permission error in list_pods: Permission denied"
 
 
-def test_unexpected_error_reported():
+def test_unexpected_error_reported() -> None:
     content = _run(_fake_client(), dispatch_side_effect=RuntimeError("boom"))
     assert content == "Unexpected error in list_pods: RuntimeError: boom"
 
@@ -69,7 +69,7 @@ def test_unexpected_error_reported():
 # ── happy path ────────────────────────────────────────────────────────────────
 
 
-def test_send_happy_path_runs_real_dispatch():
+def test_send_happy_path_runs_real_dispatch() -> None:
     """End-to-end: only the OpenAI client and the k8s API are faked. The real
     dispatch routes the tool call to the real list_pods, and its formatted
     output is fed back to the model as the tool result."""
@@ -81,8 +81,8 @@ def test_send_happy_path_runs_real_dispatch():
     k8s = MagicMock()
     k8s.list_pod_for_all_namespaces.return_value = SimpleNamespace(items=[pod])
 
-    observed = []
-    messages = []
+    observed: list[tuple[str, dict]] = []
+    messages: list[dict] = []
     with patch.object(agent, "client", _fake_client(tool_name="list_pods", arguments="{}")):
         content = agent.send(
             messages,
