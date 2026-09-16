@@ -1,10 +1,10 @@
 import argparse
-import os
 import json
+import os
 import webbrowser
 import zipfile
-
 from datetime import datetime, timezone
+
 from openai import OpenAI
 from rich import box
 from rich.console import Console
