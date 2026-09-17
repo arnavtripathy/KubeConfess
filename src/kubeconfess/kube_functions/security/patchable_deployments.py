@@ -1,5 +1,6 @@
 from kubernetes import client
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 
 def check_patchable_deployments(k8s_apps, k8s_auth, namespace: str = "all") -> str:
@@ -66,7 +67,7 @@ def check_patchable_deployments(k8s_apps, k8s_auth, namespace: str = "all") -> s
         return f"Kubernetes API error: {e.status} {e.reason}"
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "check_patchable_deployments",

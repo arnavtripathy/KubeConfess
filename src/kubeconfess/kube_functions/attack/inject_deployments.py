@@ -1,6 +1,7 @@
 import json
 
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 
 def inject_deployment(
@@ -62,7 +63,7 @@ def inject_deployment(
     return "\n".join(lines)
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "inject_deployment",

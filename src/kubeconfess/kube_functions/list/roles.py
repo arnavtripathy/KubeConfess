@@ -1,4 +1,5 @@
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 
 def list_roles(k8s_rbac, namespace: str = "all") -> str:
@@ -27,7 +28,7 @@ def list_roles(k8s_rbac, namespace: str = "all") -> str:
         return f"Kubernetes API error: {e.status} {e.reason}"
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "list_roles",

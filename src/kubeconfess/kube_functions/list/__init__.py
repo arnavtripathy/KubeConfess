@@ -1,3 +1,5 @@
+from openai.types.chat import ChatCompletionFunctionToolParam
+
 from kubeconfess.kube_functions.list.clusterrolebindings import definition as crb_def
 from kubeconfess.kube_functions.list.clusterrolebindings import list_clusterrolebindings  # ← add
 from kubeconfess.kube_functions.list.clusterroles import definition as clusterroles_def
@@ -21,7 +23,7 @@ from kubeconfess.kube_functions.list.serviceaccounts import list_serviceaccounts
 from kubeconfess.kube_functions.list.services import definition as services_def
 from kubeconfess.kube_functions.list.services import list_services
 
-definitions = [
+definitions: list[ChatCompletionFunctionToolParam] = [
     pods_def,
     deployments_def,
     namespaces_def,

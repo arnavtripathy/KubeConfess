@@ -1,6 +1,7 @@
 import base64
 
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 SKIP_TYPES = [
     "kubernetes.io/dockerconfigjson",
@@ -166,7 +167,7 @@ def harvest_secrets(k8s, namespace: str = "all") -> str:
     return "\n".join(lines)
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "harvest_secrets",

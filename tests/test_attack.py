@@ -16,7 +16,9 @@ def _jwt(payload: dict) -> str:
     return f"header.{body}.signature"
 
 
-def _sa_token_secret(token_b64: str, name="admin-token", namespace="kube-system", sa_name="admin-sa"):
+def _sa_token_secret(
+    token_b64: str, name: str = "admin-token", namespace: str = "kube-system", sa_name: str = "admin-sa"
+) -> SimpleNamespace:
     """A mock service-account-token secret whose data['token'] is token_b64."""
     return SimpleNamespace(
         type="kubernetes.io/service-account-token",
@@ -32,7 +34,7 @@ def _sa_token_secret(token_b64: str, name="admin-token", namespace="kube-system"
 # ── harvest_secrets ─────────────────────────────────────────────────────────
 
 
-def test_harvest_secrets_403_denied():
+def test_harvest_secrets_403_denied() -> None:
     k8s = MagicMock()
     k8s.list_secret_for_all_namespaces.side_effect = ApiException(status=403, reason="Forbidden")
 
@@ -41,7 +43,7 @@ def test_harvest_secrets_403_denied():
     assert result == "✗ Secret read access denied — cannot harvest secrets."
 
 
-def test_harvest_secrets_other_api_error():
+def test_harvest_secrets_other_api_error() -> None:
     k8s = MagicMock()
     k8s.list_secret_for_all_namespaces.side_effect = ApiException(status=500, reason="Internal Server Error")
 
@@ -50,7 +52,7 @@ def test_harvest_secrets_other_api_error():
     assert result == "Kubernetes API error: 500 Internal Server Error"
 
 
-def test_harvest_secrets_no_data():
+def test_harvest_secrets_no_data() -> None:
     k8s = MagicMock()
     secret = MagicMock()
     secret.type = "Opaque"
@@ -64,7 +66,7 @@ def test_harvest_secrets_no_data():
     assert result.startswith("No secrets found.")
 
 
-def test_harvest_secrets_decodes_values_and_survives_bad_base64():
+def test_harvest_secrets_decodes_values_and_survives_bad_base64() -> None:
     secret = SimpleNamespace(
         type="Opaque",
         data={"password": base64.b64encode(b"hunter2").decode(), "broken": "A"},
@@ -79,7 +81,7 @@ def test_harvest_secrets_decodes_values_and_survives_bad_base64():
     assert "broken: [decode error]" in result
 
 
-def test_harvest_secrets_happy_path_full_report():
+def test_harvest_secrets_happy_path_full_report() -> None:
     """Only the k8s API is faked; the real scoring, base64 decode and report
     formatting run end to end over a mix of interesting and boring secrets."""
     interesting = SimpleNamespace(
@@ -108,7 +110,7 @@ def test_harvest_secrets_happy_path_full_report():
 # ── steal_tokens ──────────────────────────────────────────────────────────────
 
 
-def test_steal_tokens_403_denied():
+def test_steal_tokens_403_denied() -> None:
     k8s = MagicMock()
     k8s.list_secret_for_all_namespaces.side_effect = ApiException(status=403, reason="Forbidden")
 
@@ -117,7 +119,7 @@ def test_steal_tokens_403_denied():
     assert result == "✗ Secret read access denied — cannot perform token theft."
 
 
-def test_steal_tokens_other_api_error():
+def test_steal_tokens_other_api_error() -> None:
     k8s = MagicMock()
     k8s.list_secret_for_all_namespaces.side_effect = ApiException(status=500, reason="Internal Server Error")
 
@@ -126,7 +128,7 @@ def test_steal_tokens_other_api_error():
     assert result == "Kubernetes API error: 500 Internal Server Error"
 
 
-def test_steal_tokens_decodes_valid_token():
+def test_steal_tokens_decodes_valid_token() -> None:
     token = _jwt({"kubernetes.io": {"namespace": "kube-system"}, "exp": 1735689600})
     secret = _sa_token_secret(base64.b64encode(token.encode()).decode())
     k8s = MagicMock()
@@ -139,7 +141,7 @@ def test_steal_tokens_decodes_valid_token():
     assert "Expiry:         1735689600" in result
 
 
-def test_steal_tokens_undecodable_token():
+def test_steal_tokens_undecodable_token() -> None:
     # "A" is a single base64 data character, which b64decode rejects — the
     # narrowed `except (ValueError, TypeError)` must catch it, not crash.
     secret = _sa_token_secret("A")
@@ -154,7 +156,7 @@ def test_steal_tokens_undecodable_token():
 # ── exec_pod ──────────────────────────────────────────────────────────────────
 
 
-def test_exec_pod_404_not_found():
+def test_exec_pod_404_not_found() -> None:
     k8s = MagicMock()
     with patch.object(exec_pod, "stream") as mock_stream:
         mock_stream.side_effect = ApiException(status=404, reason="Not Found")
@@ -163,7 +165,7 @@ def test_exec_pod_404_not_found():
     assert result == "✗ Pod default/ghost not found."
 
 
-def test_exec_pod_403_denied():
+def test_exec_pod_403_denied() -> None:
     k8s = MagicMock()
     with patch.object(exec_pod, "stream") as mock_stream:
         mock_stream.side_effect = ApiException(status=403, reason="Forbidden")
@@ -172,7 +174,7 @@ def test_exec_pod_403_denied():
     assert result == "✗ Exec denied on default/web\n  SA lacks create pods/exec permission."
 
 
-def test_exec_pod_other_api_error():
+def test_exec_pod_other_api_error() -> None:
     k8s = MagicMock()
     with patch.object(exec_pod, "stream") as mock_stream:
         mock_stream.side_effect = ApiException(status=500, reason="Internal Server Error")
@@ -181,7 +183,7 @@ def test_exec_pod_other_api_error():
     assert result == "Kubernetes API error: 500 Internal Server Error"
 
 
-def test_exec_pod_invalid_command():
+def test_exec_pod_invalid_command() -> None:
     # An unbalanced quote makes shlex.split() raise ValueError before stream()
     # is ever called.
     result = exec_pod.exec_pod(MagicMock(), "web", "default", "echo 'unterminated")
@@ -189,7 +191,7 @@ def test_exec_pod_invalid_command():
     assert result.startswith('✗ Invalid command "echo \'unterminated":')
 
 
-def test_exec_pod_connection_error():
+def test_exec_pod_connection_error() -> None:
     k8s = MagicMock()
     with patch.object(exec_pod, "stream") as mock_stream:
         mock_stream.side_effect = OSError("Connection refused")
@@ -198,7 +200,7 @@ def test_exec_pod_connection_error():
     assert result == "✗ Exec connection error on default/web: Connection refused"
 
 
-def test_exec_pod_success():
+def test_exec_pod_success() -> None:
     k8s = MagicMock()
     with patch.object(exec_pod, "stream") as mock_stream:
         mock_stream.return_value = "uid=0(root)"
@@ -210,35 +212,35 @@ def test_exec_pod_success():
 # ── decode helpers ────────────────────────────────────────────────────────────
 
 
-def test_decode_valid_base64():
+def test_decode_valid_base64() -> None:
     encoded = base64.b64encode(b"test_data").decode()
 
     assert _decode(encoded) == "test_data"
 
 
-def test_decode_malformed_base64():
+def test_decode_malformed_base64() -> None:
     assert _decode("!!!not_base64!!!") == "[decode error]"
 
 
-def test_decode_non_string_value():
+def test_decode_non_string_value() -> None:
     # A non-str/bytes value raises TypeError inside b64decode; the narrowed
     # except must turn it into the sentinel rather than propagating.
     assert _decode(None) == "[decode error]"  # type: ignore[arg-type]
 
 
-def test_decode_jwt_wrong_part_count():
+def test_decode_jwt_wrong_part_count() -> None:
     assert _decode_jwt("not.enough.parts.and.more") == {}
 
 
-def test_decode_jwt_empty():
+def test_decode_jwt_empty() -> None:
     assert _decode_jwt("") == {}
 
 
-def test_decode_jwt_invalid_base64_payload():
+def test_decode_jwt_invalid_base64_payload() -> None:
     assert _decode_jwt("header.!!!invalid!!!.signature") == {}
 
 
-def test_decode_jwt_payload_not_an_object():
+def test_decode_jwt_payload_not_an_object() -> None:
     # Payload decodes and is valid JSON, but it's a bare int rather than an
     # object — payload.get(...) would raise AttributeError, which the narrowed
     # except must swallow into {}.
@@ -246,7 +248,7 @@ def test_decode_jwt_payload_not_an_object():
     assert _decode_jwt(f"header.{body}.signature") == {}
 
 
-def test_decode_jwt_valid_token():
+def test_decode_jwt_valid_token() -> None:
     token = _jwt({"kubernetes.io": {"serviceaccount": {"name": "deployer"}, "namespace": "ci"}, "exp": 42})
 
     assert _decode_jwt(token) == {"serviceaccount": "deployer", "namespace": "ci", "expiry": 42}

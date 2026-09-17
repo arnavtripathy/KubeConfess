@@ -1,4 +1,5 @@
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 
 def list_services(k8s, namespace: str = "all") -> str:
@@ -37,7 +38,7 @@ def list_services(k8s, namespace: str = "all") -> str:
         return f"Kubernetes API error: {e.status} {e.reason}"
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "list_services",

@@ -1,4 +1,5 @@
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 # Secret types that are noisy and rarely interesting during an audit
 SYSTEM_SECRET_TYPES = [
@@ -7,7 +8,7 @@ SYSTEM_SECRET_TYPES = [
 ]
 
 
-def _format_secret(secret, redact: bool = True) -> list:
+def _format_secret(secret, redact: bool = True) -> list[str]:
     lines = []
     secret_type = secret.type or "Opaque"
     keys = list(secret.data.keys()) if secret.data else []
@@ -69,7 +70,9 @@ def _secrets_for_pod(k8s, pod_obj) -> str:
     return "\n".join(lines)
 
 
-def list_secrets(k8s, k8s_apps=None, namespace: str = "all", pod: str = None, deployment: str = None, include_system: bool = False) -> str:
+def list_secrets(
+    k8s, k8s_apps=None, namespace: str = "all", pod: str | None = None, deployment: str | None = None, include_system: bool = False
+) -> str:
     try:
         # ── Single pod — show secrets it references ───────────────────────────
         if pod:
@@ -126,7 +129,7 @@ def list_secrets(k8s, k8s_apps=None, namespace: str = "all", pod: str = None, de
         return f"Kubernetes API error: {e.status} {e.reason}"
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "list_secrets",

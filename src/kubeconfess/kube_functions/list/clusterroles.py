@@ -1,4 +1,5 @@
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 # System ClusterRoles are noisy and rarely interesting — filter by default
 SYSTEM_PREFIXES = [
@@ -50,7 +51,7 @@ def list_clusterroles(k8s_rbac, include_system: bool = False) -> str:
         return f"Kubernetes API error: {e.status} {e.reason}"
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "list_clusterroles",

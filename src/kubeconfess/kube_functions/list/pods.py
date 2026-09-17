@@ -1,4 +1,5 @@
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 
 def list_pods(k8s, k8s_rbac=None, namespace: str = "all", show_sa: bool = False) -> str:
@@ -70,7 +71,7 @@ def list_pods(k8s, k8s_rbac=None, namespace: str = "all", show_sa: bool = False)
         return f"Kubernetes API error: {e.status} {e.reason}"
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "list_pods",

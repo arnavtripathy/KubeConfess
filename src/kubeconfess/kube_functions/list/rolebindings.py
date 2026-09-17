@@ -1,4 +1,5 @@
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 DANGEROUS_ROLES = ["cluster-admin", "admin", "edit"]
 
@@ -31,7 +32,7 @@ def list_rolebindings(k8s_rbac, namespace: str = "all") -> str:
         return f"Kubernetes API error: {e.status} {e.reason}"
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "list_rolebindings",

@@ -1,4 +1,5 @@
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 # Paths that indicate a container has meaningful host filesystem access
 SENSITIVE_PATHS = [
@@ -23,7 +24,7 @@ def _severity(path: str) -> str:
     return "CRITICAL" if path in critical else "HIGH"
 
 
-def _check_hostpath(pod) -> list:
+def _check_hostpath(pod) -> list[dict[str, str]]:
     findings = []
 
     volumes = {v.name: v for v in (pod.spec.volumes or [])}
@@ -52,7 +53,7 @@ def _check_hostpath(pod) -> list:
     return findings
 
 
-def _format_findings(findings: list, scope: str) -> str:
+def _format_findings(findings: list[dict[str, str]], scope: str) -> str:
     if not findings:
         return f"✓ No sensitive host path mounts found in: {scope}"
 
@@ -69,7 +70,7 @@ def _format_findings(findings: list, scope: str) -> str:
     return "\n".join(lines)
 
 
-def check_hostpath_mounts(k8s, k8s_apps=None, namespace: str = "all", pod: str = None, deployment: str = None) -> str:
+def check_hostpath_mounts(k8s, k8s_apps=None, namespace: str = "all", pod: str | None = None, deployment: str | None = None) -> str:
     try:
         # ── Single pod ────────────────────────────────────────────────────────
         if pod:
@@ -108,7 +109,7 @@ def check_hostpath_mounts(k8s, k8s_apps=None, namespace: str = "all", pod: str =
         return f"Kubernetes API error: {e.status} {e.reason}"
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "check_hostpath_mounts",

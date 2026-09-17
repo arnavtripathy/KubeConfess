@@ -2,6 +2,7 @@ from pathlib import Path
 
 from kubernetes import client
 from kubernetes.client.rest import ApiException
+from openai.types.chat import ChatCompletionFunctionToolParam
 
 CHECKS = [
     ("get", "pods"),
@@ -196,7 +197,7 @@ def list_permissions(k8s_auth: client.AuthorizationV1Api, k8s: client.CoreV1Api 
         return f"Kubernetes API error: {e.status} {e.reason}"
 
 
-definition = {
+definition: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "list_permissions",
