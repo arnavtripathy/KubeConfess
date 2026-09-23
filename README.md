@@ -44,6 +44,7 @@ It's also a learning project. If you've ever wanted to understand how AI agents 
 - Privileged container detection — cluster-wide, per namespace, per pod, or per deployment
 - Root container detection — catches missing `runAsNonRoot`, explicit UID 0, and no securityContext at all
 - Host path mount detection — flags dangerous mounts like `/`, `/etc`, `/proc`, docker socket
+- Patchable deployment detection — finds deployments the current identity can inject into
 - Every finding includes: what it is, why it matters, exact fix
 
 ### Permission Auditing
@@ -61,6 +62,7 @@ It's also a learning project. If you've ever wanted to understand how AI agents 
 - Type `investigate <target>` from within the chat to map full attack paths
 - Runs a fixed sequence of checks against the target — no runaway loops
 - Produces a structured report: findings, attack paths, blast radius, and recommended fixes
+- Add `--graph` to generate an interactive D3.js attack graph alongside the report
 - Supports pods, namespaces, and service accounts as starting points
 
 ### In-Cluster Mode
@@ -68,10 +70,18 @@ It's also a learning project. If you've ever wanted to understand how AI agents 
 - Scans the pod itself: capabilities, runtime sockets, host mounts, PID namespace, cloud metadata endpoints, sensitive env vars, and credential files
 - Designed for the post-exploitation scenario: you've landed in a pod and want to know what you can do from there
 
-### Attack Capabilities (In-Cluster)
-- Token theft — finds static ServiceAccount tokens in secrets, decodes them, and outputs ready-to-use `kubectl` and `curl` commands to authenticate as that SA — including privilege escalation paths
-- Secret harvesting — decodes and dumps actual secret values (passwords, API keys, connection strings, tokens) prioritised by name and key patterns — not just key names like `list_secrets`
-- More attack modules coming soon
+### Attack Capabilities
+- **Token theft** — finds static ServiceAccount tokens in secrets, decodes them, outputs ready-to-use `kubectl` and `curl` commands to authenticate as that SA
+- **Secret harvesting** — decodes and dumps actual secret values (passwords, API keys, connection strings) prioritised by name and key patterns — not just key names
+- **Pod exec** — runs commands in any pod via the Kubernetes API directly, no kubectl required
+- **Deployment injection** — patches a deployment with a malicious image of your choice; requires explicit confirmation before executing
+
+### Attack Graph
+- Run `investigate <target> --graph` to generate an interactive D3.js attack graph alongside the report
+- Nodes colour-coded by type, sized by severity — CRITICAL nodes are larger and glow red
+- Click any node to inspect its properties and highlight connected edges
+- Exported as a self-contained HTML file — works offline, no server needed
+- In-cluster: saved to `/tmp` as a zip bundle for retrieval with `kubectl cp`
 
 ---
 
@@ -89,10 +99,10 @@ It's also a learning project. If you've ever wanted to understand how AI agents 
 git clone https://github.com/arnavtripathy/KubeConfess.git
 cd KubeConfess
 
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 
-pip install .
+pip3 install .
 ```
 
 ### Configure
@@ -149,6 +159,12 @@ you> investigate namespace/kube-system
 you> investigate sa/deployer -n staging
 ```
 
+Add `--graph` to also generate an interactive D3.js attack graph:
+
+```
+you> investigate namespace/payments --graph
+```
+
 **Target formats:**
 | Format | What it investigates |
 |---|---|
@@ -166,6 +182,15 @@ you> give me the exact kubectl command to read that AWS secret
 you> what YAML do I apply to fix the RBAC binding?
 you> which other pods in payments are worth targeting?
 ```
+
+### Attack graph
+
+Running `investigate <target> --graph` produces a self-contained `attack_graph.html` alongside the text report. The graph shows the attack path Claude identified — nodes represent cluster resources, edges show how they connect. Sample graph below:
+
+
+<img width="1683" height="1096" alt="image" src="https://github.com/user-attachments/assets/e4a287c8-9dee-4707-bfad-adcd5213e25b" />
+
+
 
 ### In-cluster mode — landed in a pod
 
@@ -235,15 +260,15 @@ you> scan this pod
 you> what can I do?
 you> list secrets in all namespaces
 you> investigate namespace/default
-you> investigate pod/juicy-pod -n payments
+you> investigate namespace/payments --graph
 ```
 
-**Attack capabilities — once inside a pod with secret read access:**
+**Attack capabilities — once inside a pod:**
 ```
 you> steal tokens from all namespaces
 you> harvest secrets from vulnerable-workloads
-you> what tokens can I steal?
-you> dump all credentials in this namespace
+you> run id in pod/payments-api -n payments
+you> patch deployment payments-api in payments with image attacker/backdoor:latest
 ```
 
 **Example output:**
@@ -286,6 +311,8 @@ The AI never sees your Python implementation — it only sees the tool's `name`,
 
 **`kube_functions/investigate.py`** handles the investigate command. It runs a fixed sequence of tools against a target, collects all results, then sends them to the AI in one call for analysis. Add new checks to the `gather()` function to make investigations more thorough.
 
+**`kube_functions/graph.py`** handles attack graph generation. It extracts the graph JSON block from Claude's analysis, renders it as a self-contained D3.js HTML file, and packages it into the report bundle.
+
 ### Project layout
 
 KubeConfess uses a standard `src/` layout so it installs and imports as a single `kubeconfess` package (no top-level module name collisions), while `python main.py` at the repo root keeps working exactly as before as a thin shim into the package.
@@ -305,6 +332,7 @@ KubeConfess/
 │       ├── connector.py                 ← kubeconfig / incluster config, returns k8s clients
 │       ├── prompts.py                   ← system prompt + investigate prompt
 │       ├── investigate.py               ← fixed tool sequence for investigate mode
+│       ├── graph.py                     ← D3.js attack graph generation
 │       │
 │       ├── list/
 │       │   ├── __init__.py              ← registry for listing tools
@@ -316,6 +344,7 @@ KubeConfess/
 │       │   ├── roles.py
 │       │   ├── clusterroles.py
 │       │   ├── rolebindings.py
+│       │   ├── clusterrolebindings.py
 │       │   ├── serviceaccounts.py
 │       │   └── secrets.py
 │       │
@@ -324,12 +353,15 @@ KubeConfess/
 │       │   ├── privileged.py
 │       │   ├── root_containers.py
 │       │   ├── hostpath_mounts.py
-│       │   └── pod_self_scan.py         ← in-cluster pod self-enumeration
+│       │   ├── pod_self_scan.py         ← in-cluster pod self-enumeration
+│       │   └── patchable_deployments.py ← find deployments current identity can inject
 │       │
 │       └── attack/                      ← post-exploitation capabilities
 │           ├── __init__.py              ← registry for attack tools
 │           ├── steal_tokens.py          ← steal static SA tokens from secrets
-│           └── harvest_secrets.py       ← decode and dump secret values
+│           ├── harvest_secrets.py       ← decode and dump secret values
+│           ├── exec_pod.py              ← run commands in pods via K8s API
+│           └── patch_deployment.py      ← inject malicious image into deployment
 │
 └── tests/
     └── test_*.py                        ← import from `kubeconfess...` against the installed package
@@ -425,6 +457,8 @@ Attack tools go in `kube_functions/attack/` and register in `kube_functions/atta
 
 Attack tools should only be called when the user explicitly requests offensive output or during investigate mode. The system prompt constrains Claude to not call them during passive audits. Keep attack tools focused — one capability per file.
 
+All attack tools that modify the cluster require the user to type `yes` at a confirmation prompt before executing. Read-only attack tools (token theft, secret harvest) run immediately.
+
 ### Adding a check to investigate mode
 
 If you add a new security or attack tool and want it to run automatically during investigations, add it to the `gather()` function in `kube_functions/investigate.py`:
@@ -472,6 +506,7 @@ openai>=1.0.0
 kubernetes>=29.0.0
 rich>=13.0.0
 requests>=2.31.0
+pyvis>=0.3.2
 ```
 
 ---
