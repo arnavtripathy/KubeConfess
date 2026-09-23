@@ -1,7 +1,6 @@
 import argparse
 import json
 import os
-import webbrowser
 import zipfile
 from datetime import datetime, timezone
 
@@ -12,6 +11,7 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.spinner import Spinner
 from rich.text import Text
+import readline
 
 from kubeconfess.agent import send
 from kubeconfess.config.vars import API_KEY, BASE_URL, MAX_TOKENS, MODEL_NAME
@@ -167,7 +167,7 @@ def run_investigate(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: li
             f"Bundle saved: [cyan]{zip_path}[/cyan]"
         )
         console.print(
-            f"  [dim]Retrieve:[/dim] "
+            f"  [dim]If in-cluster Mode, then retrieve:[/dim] "
             f"kubectl cp <namespace>/<pod>:{zip_path} ./{bundle_name}.zip"
         )
 
