@@ -1,7 +1,7 @@
 import argparse
 import json
 import os
-import webbrowser
+import readline  # noqa: F401
 import zipfile
 from datetime import datetime, timezone
 
@@ -98,7 +98,9 @@ def send_with_spinner(messages: list[dict], k8s, k8s_apps, k8s_auth, k8s_rbac, p
         return send(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, system_prompt=prompt, on_tool_call=on_tool)
 
 
-def run_investigate(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: list[dict], incluster: bool = False) -> str:
+def run_investigate(
+    target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: list[dict], incluster: bool = False, show_graph: bool = False
+) -> str:
     """
     Gather all data with fixed tool calls (no AI loop),
     then send to Claude once for analysis.
@@ -143,54 +145,46 @@ def run_investigate(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: li
     messages.append({"role": "user", "content": analysis_message})
     messages.append({"role": "assistant", "content": reply})
 
-    # ── Step 4: save bundle ───────────────────────────────────────────────
-    timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
-    safe_target = target.replace("/", "-").replace(" ", "_")
-    bundle_name = f"kubeconfess-{safe_target}-{timestamp}"
-    zip_path = f"/tmp/{bundle_name}.zip"
+    # ── Steps 4 & 5: only if --graph requested ────────────────────────────
+    if show_graph and graph:  # ← CHANGE
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
+        safe_target = target.replace("/", "-").replace(" ", "_")
+        bundle_name = f"kubeconfess-{safe_target}-{timestamp}"
+        zip_path = f"/tmp/{bundle_name}.zip"
 
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        # report.txt
-        zf.writestr(f"{bundle_name}/report.txt", reply)
-
-        # graph-data.json
-        if graph:
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(f"{bundle_name}/report.txt", reply)
             zf.writestr(f"{bundle_name}/graph-data.json", json.dumps(graph, indent=2))
-
-            # attack_graph.html
             html_tmp = f"/tmp/{bundle_name}.html"
             path = render_graph(graph, output=html_tmp)
             if path:
-                zf.write(path, f"{bundle_name}/attack_graph.html")
+                zf.write(path, arcname=f"{bundle_name}/attack_graph.html")
                 os.remove(path)
 
-    console.print(f"\n  [bold green]✓[/bold green] Bundle saved: [cyan]{zip_path}[/cyan]")
-
-    # ── Step 5: open graph if external, show copy command if in-cluster ───
-    in_cluster = os.path.exists("/var/run/secrets/kubernetes.io/serviceaccount/token")
-
-    if not in_cluster and graph:
-        try:
-            preview = f"/tmp/{bundle_name}-preview.html"
-            render_graph(graph, output=preview)
-            webbrowser.open(f"file://{os.path.abspath(preview)}")
-            console.print("  [bold green]✓[/bold green] Graph opened in browser")
-        except (OSError, ImportError):
-            pass
-    else:
-        console.print(f"\n  [dim]Retrieve from pod:[/dim]\n  kubectl cp <namespace>/<pod>:{zip_path} ./{bundle_name}.zip")
+        console.print(f"\n  [bold green]✓[/bold green] Bundle saved: [cyan]{zip_path}[/cyan]")
+        console.print(f"  [dim]If in-cluster Mode, then retrieve:[/dim] kubectl cp <namespace>/<pod>:{zip_path} ./{bundle_name}.zip")
 
     return reply
 
 
-def parse_investigate(user_input: str) -> str | None:
+def parse_investigate(user_input: str) -> tuple[str | None, bool]:
+    """
+    Returns (target, show_graph).
+    Detects: investigate <target> [--graph]
+    """
     lower = user_input.lower().strip()
     if not lower.startswith("investigate"):
-        return None
+        return None, False
+
     parts = user_input.strip().split(maxsplit=1)
     if len(parts) < 2:
-        return None
-    return parts[1].strip()
+        return None, False
+
+    remainder = parts[1].strip()
+    show_graph = "--graph" in remainder
+    target = remainder.replace("--graph", "").strip()
+
+    return target, show_graph
 
 
 def main() -> None:
@@ -229,10 +223,19 @@ def main() -> None:
                 break
 
             # ── Investigate ───────────────────────────────────────────────────
-            target = parse_investigate(user_input)
+            target, show_graph = parse_investigate(user_input)
             if target:
                 console.print(f"\n  [bold red]⚡[/bold red] Investigating: [cyan]{target}[/cyan]\n")
-                reply = run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages, incluster=args.incluster)
+                reply = run_investigate(
+                    target,
+                    k8s,
+                    k8s_apps,
+                    k8s_auth,
+                    k8s_rbac,
+                    messages,
+                    incluster=args.incluster,
+                    show_graph=show_graph,
+                )
                 print_reply(reply, investigate=True)
                 continue
 
