@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import readline  # noqa: F401
 import zipfile
 from datetime import datetime, timezone
 
@@ -11,7 +12,6 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.spinner import Spinner
 from rich.text import Text
-import readline
 
 from kubeconfess.agent import send
 from kubeconfess.config.vars import API_KEY, BASE_URL, MAX_TOKENS, MODEL_NAME
@@ -98,7 +98,9 @@ def send_with_spinner(messages: list[dict], k8s, k8s_apps, k8s_auth, k8s_rbac, p
         return send(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, system_prompt=prompt, on_tool_call=on_tool)
 
 
-def run_investigate(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: list[dict], incluster: bool = False, show_graph: bool = False) -> str:
+def run_investigate(
+    target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: list[dict], incluster: bool = False, show_graph: bool = False
+) -> str:
     """
     Gather all data with fixed tool calls (no AI loop),
     then send to Claude once for analysis.
@@ -144,32 +146,23 @@ def run_investigate(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: li
     messages.append({"role": "assistant", "content": reply})
 
     # ── Steps 4 & 5: only if --graph requested ────────────────────────────
-    if show_graph and graph:                                               # ← CHANGE
-        timestamp   = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
+    if show_graph and graph:  # ← CHANGE
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
         safe_target = target.replace("/", "-").replace(" ", "_")
         bundle_name = f"kubeconfess-{safe_target}-{timestamp}"
-        zip_path    = f"/tmp/{bundle_name}.zip"
+        zip_path = f"/tmp/{bundle_name}.zip"
 
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.writestr(f"{bundle_name}/report.txt", reply)
-            zf.writestr(
-                f"{bundle_name}/graph-data.json",
-                json.dumps(graph, indent=2)
-            )
+            zf.writestr(f"{bundle_name}/graph-data.json", json.dumps(graph, indent=2))
             html_tmp = f"/tmp/{bundle_name}.html"
             path = render_graph(graph, output=html_tmp)
             if path:
                 zf.write(path, arcname=f"{bundle_name}/attack_graph.html")
                 os.remove(path)
 
-        console.print(
-            f"\n  [bold green]✓[/bold green] "
-            f"Bundle saved: [cyan]{zip_path}[/cyan]"
-        )
-        console.print(
-            f"  [dim]If in-cluster Mode, then retrieve:[/dim] "
-            f"kubectl cp <namespace>/<pod>:{zip_path} ./{bundle_name}.zip"
-        )
+        console.print(f"\n  [bold green]✓[/bold green] Bundle saved: [cyan]{zip_path}[/cyan]")
+        console.print(f"  [dim]If in-cluster Mode, then retrieve:[/dim] kubectl cp <namespace>/<pod>:{zip_path} ./{bundle_name}.zip")
 
     return reply
 
@@ -183,13 +176,13 @@ def parse_investigate(user_input: str) -> tuple[str | None, bool]:
     if not lower.startswith("investigate"):
         return None, False
 
-    parts     = user_input.strip().split(maxsplit=1)
+    parts = user_input.strip().split(maxsplit=1)
     if len(parts) < 2:
         return None, False
 
-    remainder  = parts[1].strip()
+    remainder = parts[1].strip()
     show_graph = "--graph" in remainder
-    target     = remainder.replace("--graph", "").strip()
+    target = remainder.replace("--graph", "").strip()
 
     return target, show_graph
 
@@ -232,12 +225,13 @@ def main() -> None:
             # ── Investigate ───────────────────────────────────────────────────
             target, show_graph = parse_investigate(user_input)
             if target:
-                console.print(
-                    f"\n  [bold red]⚡[/bold red] "
-                    f"Investigating: [cyan]{target}[/cyan]\n"
-                )
+                console.print(f"\n  [bold red]⚡[/bold red] Investigating: [cyan]{target}[/cyan]\n")
                 reply = run_investigate(
-                    target, k8s, k8s_apps, k8s_auth, k8s_rbac,
+                    target,
+                    k8s,
+                    k8s_apps,
+                    k8s_auth,
+                    k8s_rbac,
                     messages,
                     incluster=args.incluster,
                     show_graph=show_graph,
