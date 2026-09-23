@@ -143,29 +143,6 @@ def run_investigate(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: li
     messages.append({"role": "user", "content": analysis_message})
     messages.append({"role": "assistant", "content": reply})
 
-    # ── Step 4: save bundle ───────────────────────────────────────────────
-    timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
-    safe_target = target.replace("/", "-").replace(" ", "_")
-    bundle_name = f"kubeconfess-{safe_target}-{timestamp}"
-    zip_path = f"/tmp/{bundle_name}.zip"
-
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        # report.txt
-        zf.writestr(f"{bundle_name}/report.txt", reply)
-
-        # graph-data.json
-        if graph:
-            zf.writestr(f"{bundle_name}/graph-data.json", json.dumps(graph, indent=2))
-
-            # attack_graph.html
-            html_tmp = f"/tmp/{bundle_name}.html"
-            path = render_graph(graph, output=html_tmp)
-            if path:
-                zf.write(path, f"{bundle_name}/attack_graph.html")
-                os.remove(path)
-
-    console.print(f"\n  [bold green]✓[/bold green] Bundle saved: [cyan]{zip_path}[/cyan]")
-
     # ── Steps 4 & 5: only if --graph requested ────────────────────────────
     if show_graph and graph:                                               # ← CHANGE
         timestamp   = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
